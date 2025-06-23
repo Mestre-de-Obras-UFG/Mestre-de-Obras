@@ -1,3 +1,3 @@
 # Mestre-de-Obras
 
-- Add status progression
+- Added status progression
