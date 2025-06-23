@@ -1,0 +1,63 @@
+name: Release e Publicação de Artefato
+
+# Gatilho: Executa a pipeline quando uma tag no formato v*.*.* é criada
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Permissão para criar a Release no GitHub
+
+    steps:
+      - name: 1. Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: 3. Executar Testes
+        run: mvn clean test
+
+      - name: 4. Compilar e Empacotar (Gerar JAR)
+        run: mvn clean package -DskipTests # Os testes já foram executados
+
+      - name: 5. Extrair Hash e Nome do Artefato
+        id: artifact_details
+        run: |
+          # Extrai o hash curto do commit
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          # Pega o nome do JAR do pom.xml e anexa o hash
+          ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout)
+          echo "ARTIFACT_PATH=target/${ARTIFACT_NAME}.jar" >> $GITHUB_ENV
+          echo "RELEASE_ARTIFACT_NAME=${ARTIFACT_NAME}-${COMMIT_HASH}.jar" >> $GITHUB_ENV
+
+      - name: 6. Publicar na Release do GitHub
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            Release automática da versão ${{ github.ref_name }}.
+            Commit: ${{ github.sha }}
+          draft: false
+          prerelease: false
+
+      - name: 7. Anexar Artefato (JAR) à Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_PATH }}
+          asset_name: ${{ env.RELEASE_ARTIFACT_NAME }}
+          asset_content_type: application/java-archive
