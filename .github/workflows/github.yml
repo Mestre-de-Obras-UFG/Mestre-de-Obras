@@ -1,40 +1,42 @@
-name: Publicar Nova Release
+name: Release Automatizada (Node.js)
 
+# Gatilho: Executa somente quando uma tag no formato v*.*.* é criada e enviada
 on:
   push:
     tags:
       - 'v*.*.*'
 
 jobs:
-  publicar-release:
+  criar-release:
     runs-on: ubuntu-latest
     permissions:
+      # Permissão necessária para a action poder criar uma Release
       contents: write
 
     steps:
-      #
-      # PASSO 1: OBRIGATÓRIO - Baixar o código primeiro!
-      #
+      # 1. Baixa o código do repositório para a máquina da Action
       - name: Checkout do Código
         uses: actions/checkout@v4
 
-      #
-      # PASSO 2: Agora sim o setup-java pode encontrar o pom.xml para o cache
-      #
-      - name: Configurar JDK 17 e Cache do Maven
-        uses: actions/setup-java@v4
+      # 2. Configura o ambiente Node.js (esta action é muito estável)
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven' # <-- Esta linha precisa que o pom.xml já exista no ambiente
+          node-version: '20' # Define a versão do Node.js
+          cache: 'npm'       # Habilita o cache das dependências para builds mais rápidos
 
-      #
-      # PASSO 3: O resto do seu workflow continua normalmente
-      #
-      - name: Compilar e Empacotar com Maven
-        run: mvn clean package
+      # 3. Instala as dependências do projeto definidas no package.json
+      - name: Instalar Dependências
+        run: npm install
 
+      # 4. Executa o script "test" do package.json para garantir a qualidade
+      - name: Rodar Testes
+        run: npm test
+
+      # 5. Cria a Release e anexa todo o código-fonte em um arquivo .zip
       - name: Criar Release no GitHub
         uses: softprops/action-gh-release@v2
         with:
-          files: target/*.jar
+          # A action automaticamente cria um .zip e um .tar.gz com todo o código
+          # da tag. Não precisa especificar arquivos, é mais simples e garantido.
+          generate_release_notes: true # Opcional: Gera notas da release automaticamente

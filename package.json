@@ -1,0 +1,12 @@
+{
+  "name": "meu-projeto-simples",
+  "version": "1.0.0",
+  "description": "Um projeto simples para demonstrar releases no GitHub Actions.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.test.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
