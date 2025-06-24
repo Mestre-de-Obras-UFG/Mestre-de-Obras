@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"✔ Testes passaram com sucesso!\" && exit 0"
+    "test": "node index.test.js""
   },
   "author": "",
   "license": "ISC"
