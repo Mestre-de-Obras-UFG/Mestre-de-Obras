@@ -1,63 +1,38 @@
-name: Release e Publicação de Artefato
+name: Publicar Nova Release
 
-# Gatilho: Executa a pipeline quando uma tag no formato v*.*.* é criada
+# Gatilho: Executa somente quando uma tag no formato v*.*.* é criada e enviada
 on:
   push:
     tags:
       - 'v*.*.*'
 
 jobs:
-  build-and-publish:
+  publicar-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Permissão para criar a Release no GitHub
+      # Permissão necessária para a action poder criar uma Release no seu repositório
+      contents: write
 
     steps:
-      - name: 1. Checkout do Código
+      # 1. Baixa o código do repositório para a máquina virtual da Action
+      - name: Checkout do Código
         uses: actions/checkout@v4
 
-      - name: 2. Configurar JDK 17
+      # 2. Configura o ambiente Java (JDK 17)
+      - name: Configurar JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: 3. Executar Testes
-        run: mvn clean test
+      # 3. Executa os testes e empacota o projeto em um arquivo .jar
+      - name: Compilar e Empacotar com Maven
+        run: mvn clean package
 
-      - name: 4. Compilar e Empacotar (Gerar JAR)
-        run: mvn clean package -DskipTests # Os testes já foram executados
-
-      - name: 5. Extrair Hash e Nome do Artefato
-        id: artifact_details
-        run: |
-          # Extrai o hash curto do commit
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          # Pega o nome do JAR do pom.xml e anexa o hash
-          ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout)
-          echo "ARTIFACT_PATH=target/${ARTIFACT_NAME}.jar" >> $GITHUB_ENV
-          echo "RELEASE_ARTIFACT_NAME=${ARTIFACT_NAME}-${COMMIT_HASH}.jar" >> $GITHUB_ENV
-
-      - name: 6. Publicar na Release do GitHub
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 4. Cria a Release e anexa o(s) arquivo(s) .jar da pasta 'target'
+      - name: Criar Release no GitHub
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            Release automática da versão ${{ github.ref_name }}.
-            Commit: ${{ github.sha }}
-          draft: false
-          prerelease: false
-
-      - name: 7. Anexar Artefato (JAR) à Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_PATH }}
-          asset_name: ${{ env.RELEASE_ARTIFACT_NAME }}
-          asset_content_type: application/java-archive
+          # Esta linha encontra o .jar dentro da pasta 'target' e o anexa
+          files: target/*.jar
