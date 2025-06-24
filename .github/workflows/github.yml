@@ -1,6 +1,5 @@
 name: Publicar Nova Release
 
-# Gatilho: Executa somente quando uma tag no formato v*.*.* é criada e enviada
 on:
   push:
     tags:
@@ -10,29 +9,32 @@ jobs:
   publicar-release:
     runs-on: ubuntu-latest
     permissions:
-      # Permissão necessária para a action poder criar uma Release no seu repositório
       contents: write
 
     steps:
-      # 1. Baixa o código do repositório para a máquina virtual da Action
+      #
+      # PASSO 1: OBRIGATÓRIO - Baixar o código primeiro!
+      #
       - name: Checkout do Código
         uses: actions/checkout@v4
 
-      # 2. Configura o ambiente Java (JDK 17)
-      - name: Configurar JDK 17
+      #
+      # PASSO 2: Agora sim o setup-java pode encontrar o pom.xml para o cache
+      #
+      - name: Configurar JDK 17 e Cache do Maven
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'maven'
+          cache: 'maven' # <-- Esta linha precisa que o pom.xml já exista no ambiente
 
-      # 3. Executa os testes e empacota o projeto em um arquivo .jar
+      #
+      # PASSO 3: O resto do seu workflow continua normalmente
+      #
       - name: Compilar e Empacotar com Maven
         run: mvn clean package
 
-      # 4. Cria a Release e anexa o(s) arquivo(s) .jar da pasta 'target'
       - name: Criar Release no GitHub
         uses: softprops/action-gh-release@v2
         with:
-          # Esta linha encontra o .jar dentro da pasta 'target' e o anexa
           files: target/*.jar
