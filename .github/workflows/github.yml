@@ -1,63 +1,42 @@
-name: Release e Publicação de Artefato
+name: Release Automatizada (Node.js)
 
-# Gatilho: Executa a pipeline quando uma tag no formato v*.*.* é criada
+# Gatilho: Executa somente quando uma tag no formato v*.*.* é criada e enviada
 on:
   push:
     tags:
       - 'v*.*.*'
 
 jobs:
-  build-and-publish:
+  criar-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Permissão para criar a Release no GitHub
+      # Permissão necessária para a action poder criar uma Release
+      contents: write
 
     steps:
-      - name: 1. Checkout do Código
+      # 1. Baixa o código do repositório para a máquina da Action
+      - name: Checkout do Código
         uses: actions/checkout@v4
 
-      - name: 2. Configurar JDK 17
-        uses: actions/setup-java@v4
+      # 2. Configura o ambiente Node.js (esta action é muito estável)
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
+          node-version: '20' # Define a versão do Node.js
+          cache: 'npm'       # Habilita o cache das dependências para builds mais rápidos
 
-      - name: 3. Executar Testes
-        run: mvn clean test
+      # 3. Instala as dependências do projeto definidas no package.json
+      - name: Instalar Dependências
+        run: npm install
 
-      - name: 4. Compilar e Empacotar (Gerar JAR)
-        run: mvn clean package -DskipTests # Os testes já foram executados
+      # 4. Executa o script "test" do package.json para garantir a qualidade
+      - name: Rodar Testes
+        run: npm test
 
-      - name: 5. Extrair Hash e Nome do Artefato
-        id: artifact_details
-        run: |
-          # Extrai o hash curto do commit
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          # Pega o nome do JAR do pom.xml e anexa o hash
-          ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout)
-          echo "ARTIFACT_PATH=target/${ARTIFACT_NAME}.jar" >> $GITHUB_ENV
-          echo "RELEASE_ARTIFACT_NAME=${ARTIFACT_NAME}-${COMMIT_HASH}.jar" >> $GITHUB_ENV
-
-      - name: 6. Publicar na Release do GitHub
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 5. Cria a Release e anexa todo o código-fonte em um arquivo .zip
+      - name: Criar Release no GitHub
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            Release automática da versão ${{ github.ref_name }}.
-            Commit: ${{ github.sha }}
-          draft: false
-          prerelease: false
-
-      - name: 7. Anexar Artefato (JAR) à Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_PATH }}
-          asset_name: ${{ env.RELEASE_ARTIFACT_NAME }}
-          asset_content_type: application/java-archive
+          # A action automaticamente cria um .zip e um .tar.gz com todo o código
+          # da tag. Não precisa especificar arquivos, é mais simples e garantido.
+          generate_release_notes: true # Opcional: Gera notas da release automaticamente
